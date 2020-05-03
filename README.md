@@ -1,7 +1,7 @@
 # Demo-Vaadin-Shop
 
 ## Technology Stack
-Vaadin, Spring boot and Spring Security
+Vaadin, Spring Boot and Spring Security
 
 ## Description
 The exercise consists of setting up a shop, load produts for sale and make a purchase.
