@@ -7,6 +7,10 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.ss.usermodel.Cell;
@@ -66,15 +70,15 @@ public class MainView extends MainForm {
 		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
             Sheet sheet = workbook.getSheetAt(0);
             DataFormatter dataFormatter = new DataFormatter();
-            int rowNum = 0;
-            for (Row row : sheet) {
-                if (rowNum++ == 0) {
-                    continue;
+            AtomicInteger rowNum = new AtomicInteger(0);
+            StreamSupport.stream(sheet.spliterator(), false)
+            	.forEach(row -> {
+                if (rowNum.getAndIncrement() != 0) {
+                    String name = dataFormatter.formatCellValue(row.getCell(0));
+                    BigDecimal price = new BigDecimal(dataFormatter.formatCellValue(row.getCell(1)).replace(",", "."));
+                    repo.save(new Product(name, price));
                 }
-                String name = dataFormatter.formatCellValue(row.getCell(0));
-                BigDecimal price = new BigDecimal(dataFormatter.formatCellValue(row.getCell(1)).replace(",", "."));
-                repo.save(new Product(name, price));
-            }
+            });
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -88,17 +92,17 @@ public class MainView extends MainForm {
 		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
             Sheet sheet = workbook.getSheetAt(0);
             DataFormatter dataFormatter = new DataFormatter();
-            int rowNum = 0;
+            AtomicInteger rowNum = new AtomicInteger(0);
             List<ProductPurchase> productPurchases = new ArrayList<>();
-            for (Row row : sheet) {
-                if (rowNum++ == 0) {
-                    continue;
+            StreamSupport.stream(sheet.spliterator(), false)
+        	.forEach(row -> {
+	            if (rowNum.getAndIncrement() != 0) {
+	                String name = dataFormatter.formatCellValue(row.getCell(0));
+	                Integer quantity = new Integer(dataFormatter.formatCellValue(row.getCell(1)));
+	                Product product = repo.findByName(name);
+	                productPurchases.add(new ProductPurchase(product, quantity));
                 }
-                String name = dataFormatter.formatCellValue(row.getCell(0));
-                Integer quantity = new Integer(dataFormatter.formatCellValue(row.getCell(1)));
-                Product product = repo.findByName(name);
-                productPurchases.add(new ProductPurchase(product, quantity));
-            }
+            });
             return this.generateReceipt(productPurchases);            
         } finally {
         	inputStream.close();
@@ -135,34 +139,33 @@ public class MainView extends MainForm {
             cell = row.createCell(3);
             cell.setCellStyle(headerCellStyle);
 
-            int r = 1;
-            BigDecimal total = BigDecimal.ZERO;
-            for (ProductPurchase p : productPurchases) {
-                row = sheet.createRow(r++);
+            AtomicInteger r = new AtomicInteger(1);
+            AtomicReference<BigDecimal> total = new AtomicReference<BigDecimal>(BigDecimal.ZERO);
+            productPurchases.forEach(p -> {
+                Row row2 = sheet.createRow(r.getAndAdd(1));
 
-                cell = row.createCell(0);
-                cell.setCellValue(p.getProduct().getName());
-                cell = row.createCell(1);
-                cell.setCellValue(p.getQuantity());
-                cell = row.createCell(2);
+                Cell cell2 = row2.createCell(0);
+                cell2.setCellValue(p.getProduct().getName());
+                cell2 = row2.createCell(1);
+                cell2.setCellValue(p.getQuantity());
+                cell2 = row2.createCell(2);
                 BigDecimal subtotal = p.getProduct().getPrice().multiply(new BigDecimal(p.getQuantity()));
-                cell.setCellValue(subtotal.doubleValue());
-                total = total.add(subtotal);
-            }
+                cell2.setCellValue(subtotal.doubleValue());
+                total.compareAndSet(total.get(), total.get().add(subtotal));
+            });
             
             //Total row
-            row = sheet.createRow(r+2);
+            row = sheet.createRow(r.addAndGet(2));
             cell = row.createCell(0);
             cell.setCellStyle(headerCellStyle);
             cell.setCellValue("TOTAL");
             cell.setCellStyle(headerCellStyle);
             cell = row.createCell(2);
-            cell.setCellValue(total.doubleValue());
+            cell.setCellValue(total.get().doubleValue());
 
             // Resize all columns to fit the content size
-            for (int i = 0; i < 7; i++) {
-                sheet.autoSizeColumn(i);
-            }
+            IntStream.rangeClosed(0, 7)
+            	.forEach(sheet::autoSizeColumn);
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             workbook.write(bos);

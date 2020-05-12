@@ -10,9 +10,9 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.nridev</groupId>
-	<artifactId>vaadin-shop</artifactId>
+	<artifactId>demo-vaadin-shop</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>crud-with-vaadin</name>
+	<name>demo-vaadin-shop</name>
 	<description>Demo project for Spring Boot</description>
 
 	<properties>

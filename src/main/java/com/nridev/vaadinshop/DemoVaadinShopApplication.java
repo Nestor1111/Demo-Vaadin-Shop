@@ -11,12 +11,12 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
 import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication(exclude = ErrorMvcAutoConfiguration.class)
-public class VaadinShopApplication extends SpringBootServletInitializer {
+public class DemoVaadinShopApplication extends SpringBootServletInitializer {
 
-	private static final Logger log = LoggerFactory.getLogger(VaadinShopApplication.class);
+	private static final Logger log = LoggerFactory.getLogger(DemoVaadinShopApplication.class);
 
 	public static void main(String[] args) {
-		SpringApplication.run(VaadinShopApplication.class);
+		SpringApplication.run(DemoVaadinShopApplication.class);
 	}
 
 }
